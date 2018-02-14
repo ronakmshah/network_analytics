@@ -35,6 +35,8 @@ def populateVPorts():
             vport_prop['uuid'] = str(uuid.uuid4())
             vport_prop['port'] = i+1
             vport_prop['pg'] = PG
+            service_item = L4_SG[i%len(L4_SG)]
+            vport_prop['service'] = random.sample(service_item.values()[0], 1)[0]
             VPORTS.append(vport_prop)
             vport_prop = {}
 
@@ -42,9 +44,9 @@ def generateFlowStats(domain_id, type="l3"):
     for i in range(len(VPORTS)):
         es_data = {}
         flow_data = random.sample(VPORTS, 2)
-        service_item = L4_SG[i%len(L4_SG)]
+        #service_item = L4_SG[i%len(L4_SG)]
         # Always write it in specific index in specific doc_type
-        es_data['_index'] = "nuage_flow"
+        es_data['_index'] = "nuage_flow_test"
         es_data['_type'] = "nuage_doc_type"
 
         # Filling in packet-level data
@@ -75,8 +77,8 @@ def generateFlowStats(domain_id, type="l3"):
             'zoneName': CONFIG_DICT['domain.name'] + "-" + str(domain_id) + "-zone",
             'aclId': flow_data[0]['uuid'],
             'l7ApplicationName': random.sample(L7_APPLICATION, 1)[0],
-            'serviceGroup': service_item.keys()[0],
-            'service': random.sample(service_item.values()[0], 1)[0]
+            #'serviceGroup': service_item.keys()[0],
+            'service': flow_data[0]['service']
         }
         if type=="l3":
             es_data['nuage_metadata']['domainName'] = CONFIG_DICT['domain.name'] + "-" + str(domain_id)
@@ -129,7 +131,4 @@ if __name__ == "__main__":
         #print PGS
         #print VPORTS
         generateFlowStats(i)
-        
-    for i in range(1, CONFIG_DICT['no_of_l2domains']+1):
-        generateFlowStats(i, type='l2') 
         
