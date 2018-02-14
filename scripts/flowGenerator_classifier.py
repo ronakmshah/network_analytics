@@ -29,12 +29,11 @@ def populateVPorts():
     vport_prop = {}
     for PG in PGS:
         for i in range(CONFIG_DICT["no_of_vports_per_pgs"]):
-            vport_prop['name'] = PG + "-VPort" + str(i+1)
-            vport_prop['ip'] = "10.10.0." + str(i+1)
+            vport_prop['name'] = "VPort-" + str((i+1)*100)
+            vport_prop['ip'] = "10.10.0." + str((i+1)*100)
             vport_prop['mac'] = "DE:AD:BE:EF:00:" + (("0" + str(i+1)) if i<10 else str(i+1))
             vport_prop['uuid'] = str(uuid.uuid4())
-            vport_prop['port'] = i+1
-            vport_prop['pg'] = PG
+            vport_prop['port'] = (i+1)*100
             service_item = L4_SG[i%len(L4_SG)]
             vport_prop['service'] = random.sample(service_item.values()[0], 1)[0]
             VPORTS.append(vport_prop)
@@ -46,7 +45,7 @@ def generateFlowStats(domain_id, type="l3"):
         flow_data = random.sample(VPORTS, 2)
         #service_item = L4_SG[i%len(L4_SG)]
         # Always write it in specific index in specific doc_type
-        es_data['_index'] = "nuage_flow_test"
+        es_data['_index'] = "nuage_flow_classifier"
         es_data['_type'] = "nuage_doc_type"
 
         # Filling in packet-level data
@@ -61,18 +60,14 @@ def generateFlowStats(domain_id, type="l3"):
         es_data['protocol'] = random.sample(PROTOCOL, 1)[0]
         es_data['messageType'] = 2
         es_data['type'] =  random.sample(ACL_ACTION, 1)[0]
-        es_data['nuage_metadata'] ={
+        es_data['nuage_metadata'] = {
             'inport': random.randint(1,5), 
             'flowid': random.randint(10000,15000),
             'outport': random.randint(1,5),
             'domainName': CONFIG_DICT['domain.name'] + "-" + str(domain_id),
-                        'acl_destination_type': 'pg',
-            'acl_destination_name': flow_data[1]['pg'],
             'enterpriseName': CONFIG_DICT['enterprise.name'], 
-            'sourcevport': flow_data[0]['uuid'],
-            'destinationvport': flow_data[1]['uuid'],
-                        'acl_source_type': 'pg',
-            'acl_source_name': flow_data[0]['pg'],
+            'sourcevport': flow_data[0]['name'],
+            'destinationvport': flow_data[1]['name'],
             'subnetName': CONFIG_DICT['domain.name'] + "-" + str(domain_id) + "-sub",
             'zoneName': CONFIG_DICT['domain.name'] + "-" + str(domain_id) + "-zone",
             'aclId': flow_data[0]['uuid'],
@@ -98,7 +93,7 @@ def generateFlowStats(domain_id, type="l3"):
         writeToES(es_data)
 
 def writeToES(es_data):
-    es = Elasticsearch("192.168.100.200")
+    es = Elasticsearch(CONFIG_DICT['elastic_host'])
     write_data = []
     # Create counters on the fly everytime
     # Write data for a day every minute
