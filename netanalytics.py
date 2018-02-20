@@ -8,6 +8,7 @@ import yaml
 
 from db_connector import connector as conn
 from schema_reader import schemareader
+from analyse import analyse
 
 db_conn = None
 app = Flask(__name__)
@@ -27,8 +28,13 @@ def configRead():
 
 @app.route("/suggestions", methods=["POST", "GET"])
 def suggestion_page():
-    return render_template("suggestions.html")
-
+	analysis = analyse.Analyse(db_conn)
+	print("Starting Analysis.")
+	df = analysis.data_read()
+	print("Fetched Data.")
+	recall,precision = analysis.create_model_and_validate(df)
+	print("Model created and validated.")
+	return render_template("suggestions.html",precision=precision,recall=recall)
 
 @app.route("/", methods=["POST", "GET"])
 def connection_info():
@@ -41,10 +47,10 @@ def connection_info():
         # connect to DB
         db_conn = conn.DBConnector(config_dict)
         db_conn.connect()
-        print "Connection established."
+        print("Connection established.")
         schema_reader = schema_read(db_conn)
-        print "Schema Read"
-        return redirect(url_for(".suggestion_page"))
+        print("Schema Read")
+        return redirect(url_for(".suggestion_page"))    
     return render_template("conn-info.html", error=error)
 
 

@@ -1,7 +1,7 @@
 import copy
 import pandas as pd
 import numpy as np
-import xgboost as xgb
+import xgboost
 import elasticsearch
 from sklearn.preprocessing import LabelEncoder
 
@@ -16,9 +16,9 @@ class Analyse():
 	def __init__(self,handle):
 		if handle.type!='elasticsearch':
 			return
-		self.es = handle
+		self.es = handle.handle
 
-	def data_read():
+	def data_read(self):
 		#Create a list for data
 		data = []
 		page = self.es.search(index='nuage_flow_test',
@@ -32,7 +32,7 @@ class Analyse():
 		sid = page['_scroll_id']
 		scroll_size = len(page['hits']['hits'])
 		while scroll_size>0:
-		    page = es.scroll(scroll_id = sid, scroll = '2m')
+		    page = self.es.scroll(scroll_id = sid, scroll = '2m')
 		    data += process_es_search(page['hits']['hits'])
 		    sid = page['_scroll_id']
 		    scroll_size = len(page['hits']['hits'])
@@ -40,7 +40,7 @@ class Analyse():
 		df = pd.DataFrame(data,columns=cols)
 		return df
 
-	def create_model_and_validate(df):
+	def create_model_and_validate(self,df):
 		#Labelling string data to class-ed data
 		le = LabelEncoder()
 		le.fit(df['service'])
@@ -66,12 +66,15 @@ class Analyse():
 
 		#XGB model - straightforward implementation out of the box, no changes
 		xgb = xgboost.XGBClassifier(gamma = 0.1)
-		model = xgb.fit(trainX,trainY)
+		self.model = xgb.fit(trainX,trainY)
 		predictedY = model.predict(testX)
 		from sklearn.metrics import recall_score,precision_score
 		recall = recall_score(testY,predictedY,average='micro')
 		precision = precision_score(testY,predictedY,average='micro')
 		return (recall,precision)
+
+	def predict_acl_source_name(self,service,sourcevport):
+		return self.model.predict(pd.DataFrame([[service,sourcevport]])).tolist()[0]
 
 
 
